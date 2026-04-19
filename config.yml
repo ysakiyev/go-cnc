@@ -1,0 +1,9 @@
+Server:
+  Address: 0.0.0.0:54321
+  LogPath: /var/log/cnc/cnc.log
+  KaepMinTime: 5
+  KaepPermitWithoutStream: true
+  KaspMaxConnectionIdle: 15
+  KaspMaxConnectionAgeGrace: 5
+  KaspTime: 2
+  KaspTimeout: 20

@@ -1,0 +1,41 @@
+syntax = "proto3";
+package go_cnc;
+option go_package = ".;pb";
+
+service ClientService {
+  rpc GetAgents(Empty) returns(GetAgentsResponse); // getting list of connected agents from server
+  rpc CreateConn(ClientConnRequest) returns (CreateConnResponse) {}; //
+  rpc CreateTcpStream (stream Chunk) returns (stream Chunk); // bidirectional stream for tcp chunks
+}
+
+service AgentService {
+  rpc CreateConnStream(Empty) returns (stream AgentConn); // from server to agent
+  rpc CreateTcpStream (stream Chunk) returns (stream Chunk); // bidirectional stream for tcp chunks
+}
+
+message Empty {}
+
+message AgentConn {
+  string connId = 1;
+  string remoteAddr = 2;
+}
+
+message GetAgentsResponse {
+  repeated Agent agents = 1;
+}
+
+message Agent {
+  string id = 1;
+  string desc = 2;
+}
+
+message ClientConnRequest {
+  string agentId = 1;
+  string remoteAddr = 2;
+}
+
+message CreateConnResponse {
+  string connId = 1;
+}
+
+message Chunk {bytes data = 1;}
