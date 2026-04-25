@@ -7,3 +7,26 @@ Server:
   KaspMaxConnectionAgeGrace: 5
   KaspTime: 2
   KaspTimeout: 20
+
+Control:
+  Address: 0.0.0.0:54321
+  RelayAddr: localhost:54400
+  SigningKey: "your-32-byte-signing-key-here!!!"
+  LogPath: /var/log/cnc/control.log
+  KaepMinTime: 5
+  KaepPermitWithoutStream: true
+  KaspMaxConnectionIdle: 15
+  KaspMaxConnectionAgeGrace: 5
+  KaspTime: 2
+  KaspTimeout: 20
+
+Relay:
+  Address: 0.0.0.0:54400
+  SigningKey: "your-32-byte-signing-key-here!!!"
+  LogPath: /var/log/cnc/relay.log
+  KaepMinTime: 5
+  KaepPermitWithoutStream: true
+  KaspMaxConnectionIdle: 15
+  KaspMaxConnectionAgeGrace: 5
+  KaspTime: 2
+  KaspTimeout: 20
