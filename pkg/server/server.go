@@ -4,6 +4,7 @@ import (
 	"go-cnc2/config"
 	"go-cnc2/pkg/common"
 	"go-cnc2/pkg/conn"
+	"go-cnc2/pkg/relay"
 	"go-cnc2/pkg/services"
 	"go-cnc2/proto/pb"
 	"log"
@@ -24,9 +25,12 @@ type Server struct {
 }
 
 func NewServer(conf config.Conf) *Server {
+	keys := map[byte][]byte{
+		0: []byte("your-32-byte-signing-key-here!!!"),
+	}
 	cm := conn.NewConnManager()
 	as := services.NewAgentService(cm)
-	cs := services.NewClientService(cm)
+	cs := services.NewClientService(cm, conf.Server.Address, keys)
 	return &Server{
 		Address:       conf.Server.Address,
 		CM:            cm,
@@ -65,6 +69,11 @@ func (s *Server) Run(conf config.ServerConf) error {
 	pb.RegisterAgentServiceServer(grpcServer, s.AgentService)
 	pb.RegisterClientServiceServer(grpcServer, s.ClientService)
 	reflection.Register(grpcServer)
+
+	relayKeys := map[byte][]byte{
+		0: []byte("your-32-byte-signing-key-here!!!"),
+	}
+	relay.Register(grpcServer, relayKeys)
 
 	logger.Info(common.StrInitGrpcSrv, listener.Addr().String())
 

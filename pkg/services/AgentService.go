@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+
 type AgentService struct {
 	connManager *conn.ConnManager
 }
@@ -45,27 +46,3 @@ func (s *AgentService) CreateConnStream(_ *pb.Empty, connStream pb.AgentService_
 	return connStream.Context().Err()
 }
 
-func (s *AgentService) CreateTcpStream(tcpStream pb.AgentService_CreateTcpStreamServer) error {
-	md, ok := metadata.FromIncomingContext(tcpStream.Context())
-	if !ok {
-		logger.Errorf(common.LogfmtErr, common.StrSvcAgent, common.StrTcpStream, common.StrErrGetMeta)
-		return fmt.Errorf(common.StrErrGetMeta)
-	}
-	connId, err := uuid.Parse(md.Get("conn_id")[0])
-	if err != nil {
-		logger.Errorf(common.LogfmtErr, common.StrSvcAgent, common.StrTcpStream, common.StrErrUnableParseUuid)
-		return status.Errorf(codes.InvalidArgument, common.StrErrUnableParseUuid, err)
-	}
-
-	err = s.connManager.RegisterAgentTcpStream(connId, tcpStream)
-	if err != nil {
-		logger.Errorf(common.LogfmtErr, common.StrSvcAgent, common.StrTcpStream, fmt.Sprintf(common.StrErrRegisterAgentTcpStream, err))
-		return status.Errorf(codes.InvalidArgument, common.StrErrRegisterAgentTcpStream, err)
-	}
-
-	logger.Infof(common.LogfmtInfo, common.StrSvcAgent, common.StrTcpStream, fmt.Sprintf(common.StrCreateTcpStream, connId))
-
-	<-tcpStream.Context().Done()
-	logger.Infof(common.LogfmtInfo, common.StrSvcAgent, common.StrTcpStream, common.StrCtxDone)
-	return tcpStream.Context().Err()
-}

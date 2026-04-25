@@ -5,12 +5,15 @@ option go_package = ".;pb";
 service ClientService {
   rpc GetAgents(Empty) returns(GetAgentsResponse); // getting list of connected agents from server
   rpc CreateConn(ClientConnRequest) returns (CreateConnResponse) {}; //
-  rpc CreateTcpStream (stream Chunk) returns (stream Chunk); // bidirectional stream for tcp chunks
 }
 
 service AgentService {
   rpc CreateConnStream(Empty) returns (stream AgentConn); // from server to agent
-  rpc CreateTcpStream (stream Chunk) returns (stream Chunk); // bidirectional stream for tcp chunks
+}
+
+service RelayService {
+  // session_token goes in metadata key "session_token"
+  rpc Tunnel(stream Chunk) returns (stream Chunk);
 }
 
 message Empty {}
@@ -18,6 +21,8 @@ message Empty {}
 message AgentConn {
   string connId = 1;
   string remoteAddr = 2;
+  string relay_addr = 3;
+  string session_token = 4;
 }
 
 message GetAgentsResponse {
@@ -36,6 +41,8 @@ message ClientConnRequest {
 
 message CreateConnResponse {
   string connId = 1;
+  string relay_addr = 2;
+  string session_token = 3;
 }
 
 message Chunk {bytes data = 1;}

@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"go-cnc2/proto/pb"
+	"io"
 	"log"
 	"net"
+
+	"go-cnc2/pkg/relay"
+	pb "go-cnc2/proto/pb"
 
 	"github.com/google/uuid"
 	logger "github.com/sirupsen/logrus"
@@ -33,13 +36,6 @@ func (c *Client) CreateConn(ctx context.Context, in *pb.ClientConnRequest, opts 
 	return response, nil
 }
 
-func (c *Client) CreateTcpStream(ctx context.Context, opts ...grpc.CallOption) (pb.ClientService_CreateTcpStreamClient, error) {
-	stream, err := c.clientService.CreateTcpStream(ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return stream, nil
-}
 
 func (c *Client) GetAgents(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.GetAgentsResponse, error) {
 	response, err := c.clientService.GetAgents(ctx, in, opts...)
@@ -168,36 +164,28 @@ func (c *Client) socks5Proxy(conn net.Conn, agentId uuid.UUID) {
 
 	conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-	connId := resp.ConnId
-	ctx := context.Background()
-	ctx = metadata.AppendToOutgoingContext(ctx, "conn_id", connId)
-	tcpStream, err := c.CreateTcpStream(ctx)
+	// dial the relay
+	relayConn, err := grpc.Dial(resp.RelayAddr, grpc.WithInsecure()) //nolint:staticcheck
 	if err != nil {
-		logger.Errorf("unable to create tcp stream: %v", err)
+		logger.Errorf("failed to dial relay %s: %v", resp.RelayAddr, err)
 		return
 	}
-	logger.Infof("Client created tcp stream to connId: %s", connId)
+	defer relayConn.Close()
 
-	log.Printf("Starting goroutines for connId: %s", connId)
+	tunnelCtx := metadata.AppendToOutgoingContext(context.Background(), "session_token", resp.SessionToken)
+	tunnel, err := pb.NewRelayServiceClient(relayConn).Tunnel(tunnelCtx)
+	if err != nil {
+		logger.Errorf("failed to open tunnel stream: %v", err)
+		return
+	}
+	logger.Infof("Client tunnel open for connId: %s", resp.ConnId)
 
-	done := make(chan bool, 2)
+	errCh := make(chan error, 2)
+	go func() { _, err := io.Copy(conn, &relay.StreamReader{Stream: tunnel}); errCh <- err }()
+	go func() { _, err := io.Copy(relay.StreamWriter{Stream: tunnel}, conn); errCh <- err }()
 
-	go func() {
-		log.Printf("Started handleConnToTcpStream goroutine for connId: %s", connId)
-		c.handleConnToTcpStream(conn, tcpStream)
-		log.Printf("Finished handleConnToTcpStream goroutine for connId: %s", connId)
-		done <- true
-	}()
-	go func() {
-		log.Printf("Started handleTcpStreamToConn goroutine for connId: %s", connId)
-		c.handleTcpStreamToConn(tcpStream, conn)
-		log.Printf("Finished handleTcpStreamToConn goroutine for connId: %s", connId)
-		done <- true
-	}()
-
-	// Wait for at least one goroutine to finish (indicating connection closed)
-	<-done
-	log.Printf("Connection closed for connId: %s", connId)
+	<-errCh
+	log.Printf("Connection closed for connId: %s", resp.ConnId)
 
 }
 

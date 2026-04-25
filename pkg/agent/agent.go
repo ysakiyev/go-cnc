@@ -25,10 +25,3 @@ func (a *Agent) CreateConnStream(ctx context.Context, empty *pb.Empty, opts ...g
 	return stream, nil
 }
 
-func (a *Agent) CreateTcpStream(ctx context.Context, opts ...grpc.CallOption) (pb.AgentService_CreateTcpStreamClient, error) {
-	stream, err := a.agentService.CreateTcpStream(ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return stream, nil
-}
