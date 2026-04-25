@@ -1,5 +1,7 @@
 package config
 
 type Conf struct {
-	Server ServerConf
+	Server  ServerConf
+	Control ControlConf
+	Relay   RelayConf
 }
